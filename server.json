@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ArkNill/snapgrab",
+  "title": "Snapgrab",
+  "description": "URL to screenshot with metadata. Python MCP server. Claude Vision optimized.",
+  "repository": {
+    "url": "https://github.com/QuartzUnit/snapgrab",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "snapgrab",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
