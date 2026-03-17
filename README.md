@@ -1,5 +1,10 @@
 # Snapgrab
 
+[![PyPI](https://img.shields.io/pypi/v/snapgrab)](https://pypi.org/project/snapgrab/)
+[![Python](https://img.shields.io/pypi/pyversions/snapgrab)](https://pypi.org/project/snapgrab/)
+[![License](https://img.shields.io/github/license/QuartzUnit/snapgrab)](https://github.com/QuartzUnit/snapgrab/blob/main/LICENSE)
+[![Tests](https://img.shields.io/badge/tests-29%20passed-brightgreen)]()
+
 > URL to screenshot with metadata. Claude Vision optimized.
 
 ```python
