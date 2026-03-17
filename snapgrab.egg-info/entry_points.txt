@@ -1,0 +1,3 @@
+[console_scripts]
+snapgrab = snapgrab.__main__:main
+snapgrab-mcp = snapgrab.mcp_server:main

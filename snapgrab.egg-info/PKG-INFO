@@ -1,0 +1,143 @@
+Metadata-Version: 2.4
+Name: snapgrab
+Version: 0.1.0
+Summary: URL to screenshot with metadata. Python MCP server included. Claude Vision optimized.
+Author: QuartzUnit
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/QuartzUnit/snapgrab
+Project-URL: Repository, https://github.com/QuartzUnit/snapgrab
+Project-URL: Issues, https://github.com/QuartzUnit/snapgrab/issues
+Keywords: screenshot,capture,web,mcp,playwright,llm,claude
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Multimedia :: Graphics :: Capture :: Screen Capture
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: playwright>=1.49
+Requires-Dist: Pillow>=10.0
+Requires-Dist: click>=8.0
+Requires-Dist: rich>=13.0
+Provides-Extra: mcp
+Requires-Dist: fastmcp>=2.0; extra == "mcp"
+Provides-Extra: all
+Requires-Dist: snapgrab[mcp]; extra == "all"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.24; extra == "dev"
+Requires-Dist: ruff>=0.9; extra == "dev"
+Dynamic: license-file
+
+# Snapgrab
+
+> URL to screenshot with metadata. Claude Vision optimized.
+
+```python
+from snapgrab import capture
+
+result = await capture("https://example.com")
+print(result.path)           # /tmp/snapgrab/example_com_desktop_20260317_120000.png
+print(result.metadata.title) # "Example Domain"
+print(result.vision_tokens)  # ~2764
+```
+
+## Features
+
+- **Screenshot capture** — PNG, JPEG, PDF with full-page support
+- **Page metadata** — title, description, Open Graph tags, favicon, HTTP status
+- **Claude Vision optimized** — auto-resize to 1568px, token cost estimation
+- **Viewport presets** — desktop (1920x1080), tablet (768x1024), mobile (375x812)
+- **MCP server included** — 3 tools for Claude Code / MCP clients
+- **Element capture** — screenshot specific CSS selectors
+- **Dark mode** — force light/dark color scheme
+
+## Install
+
+```bash
+pip install snapgrab
+```
+
+First run will prompt to install Playwright browsers:
+```bash
+playwright install chromium
+```
+
+## Usage
+
+### Python API
+
+```python
+import asyncio
+from snapgrab import capture
+
+async def main():
+    # Basic screenshot
+    result = await capture("https://example.com")
+
+    # Mobile viewport, full page
+    result = await capture("https://example.com", viewport="mobile", full_page=True)
+
+    # Dark mode, JPEG format
+    result = await capture("https://example.com", dark_mode=True, format="jpeg")
+
+    # Specific element
+    result = await capture("https://example.com", selector="#main-content")
+
+    # Custom viewport
+    result = await capture("https://example.com", viewport=(1440, 900))
+
+asyncio.run(main())
+```
+
+### CLI
+
+```bash
+snapgrab https://example.com                          # basic PNG
+snapgrab https://example.com -v mobile -f             # mobile, full page
+snapgrab https://example.com --format jpeg -q 90      # JPEG quality 90
+snapgrab https://example.com -s "#hero" --dark-mode   # element + dark mode
+snapgrab https://example.com -j                       # JSON output
+snapgrab meta https://example.com                     # metadata only
+```
+
+### MCP Server
+
+```bash
+pip install "snapgrab[mcp]"
+snapgrab-mcp  # starts stdio MCP server
+```
+
+**Tools:**
+- `capture_screenshot` — capture URL with metadata and vision token estimate
+- `capture_comparison` — compare desktop vs mobile (or any viewports)
+- `extract_page_metadata` — metadata only, no screenshot
+
+## CaptureResult
+
+```python
+result.path            # saved file path
+result.format          # "png", "jpeg", "pdf"
+result.width           # viewport width
+result.height          # page height (full_page) or viewport height
+result.file_size       # bytes
+result.vision_tokens   # estimated Claude Vision token cost
+result.vision_path     # path to Vision-optimized image (≤1568px)
+result.processing_time_ms
+result.metadata.title
+result.metadata.description
+result.metadata.og_title
+result.metadata.og_image
+result.metadata.favicon_url
+result.metadata.status_code
+result.metadata.url    # final URL after redirects
+```
+
+## License
+
+[MIT](LICENSE)
+
+<!-- mcp-name: io.github.ArkNill/snapgrab -->

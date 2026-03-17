@@ -1,0 +1,16 @@
+LICENSE
+README.md
+pyproject.toml
+snapgrab/__init__.py
+snapgrab/__main__.py
+snapgrab/browser.py
+snapgrab/core.py
+snapgrab/mcp_server.py
+snapgrab/metadata.py
+snapgrab/vision.py
+snapgrab.egg-info/PKG-INFO
+snapgrab.egg-info/SOURCES.txt
+snapgrab.egg-info/dependency_links.txt
+snapgrab.egg-info/entry_points.txt
+snapgrab.egg-info/requires.txt
+snapgrab.egg-info/top_level.txt
