@@ -5,6 +5,8 @@
 [![License](https://img.shields.io/github/license/QuartzUnit/snapgrab)](https://github.com/QuartzUnit/snapgrab/blob/main/LICENSE)
 [![Tests](https://img.shields.io/badge/tests-29%20passed-brightgreen)]()
 
+> [한국어 문서](README.ko.md)
+
 > URL to screenshot with metadata. Claude Vision optimized.
 
 ```python
@@ -111,4 +113,4 @@ result.metadata.url    # final URL after redirects
 
 [MIT](LICENSE)
 
-<!-- mcp-name: io.github.ArkNill/snapgrab -->
+<!-- mcp-name: io.github.QuartzUnit/snapgrab -->
