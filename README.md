@@ -109,6 +109,10 @@ result.metadata.status_code
 result.metadata.url    # final URL after redirects
 ```
 
+## Used in
+
+- [watchdeck](https://github.com/QuartzUnit/watchdeck) — Web page monitoring with visual diffs and safety guards
+
 ## License
 
 [MIT](LICENSE)
