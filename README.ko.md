@@ -89,6 +89,16 @@ snapgrab-mcp  # stdio MCP 서버 시작
 - `capture_comparison` — 데스크톱 vs 모바일 (또는 임의 뷰포트) 비교
 - `extract_page_metadata` — 메타데이터만 추출 (스크린샷 없음)
 
+## 동작 원리
+
+```mermaid
+flowchart LR
+    A["🔗 URL"] --> B["Playwright\n브라우저 실행"]
+    B --> C["📸 스크린샷\n전체 페이지 / 뷰포트"]
+    C --> D["리사이즈\nClaude Vision 최적화"]
+    D --> E["✅ 이미지 +\n메타데이터"]
+```
+
 ## CaptureResult
 
 ```python
