@@ -8,5 +8,7 @@ venv/
 *.pyc
 .vscode/
 .idea/
+.env
+.mcpregistry_*
 CLAUDE.md
 PLAN.txt
