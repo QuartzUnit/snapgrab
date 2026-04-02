@@ -1,58 +1,20 @@
 # snapgrab
-
-> URL to screenshot with metadata. Python MCP server included. Claude Vision optimized.
-
-## Purpose
-
-Captures screenshots of web pages using Playwright and extracts page metadata (title, Open Graph tags, favicon). Automatically optimizes output images for Claude Vision by resizing to 1568px max dimension, reducing token cost while preserving visual fidelity.
-
-## Capabilities
-
-- **Screenshot capture**: Full-page or viewport-only captures via Playwright in PNG, JPEG, or PDF format
-- **Viewport presets**: desktop (1920x1080), tablet (768x1024), mobile (375x812), or custom WxH
-- **Claude Vision optimization**: Auto-resize to 1568px max with vision token estimation
-- **Metadata extraction**: Title, description, Open Graph tags, favicon URL, HTTP status
-- **Element capture**: Target specific elements via CSS selector
-- **Comparison mode**: Capture same URL in multiple viewports for responsive design review
-- **Dark mode**: Force dark color scheme for captures
-
-## Installation
-
+> URL to screenshot + metadata. Claude Vision optimized. CLI / async Python / MCP.
+## Install
 ```
-pip install snapgrab
-pip install snapgrab[mcp]    # + MCP server
-pip install snapgrab[all]    # everything
-playwright install chromium  # required browser
+pip install snapgrab        # core
+pip install snapgrab[mcp]   # + MCP server
+playwright install chromium
 ```
-
-## Quick Use
-
-### CLI
-
-```bash
-snapgrab url https://example.com
-snapgrab url https://example.com --viewport mobile --full-page --format jpeg
-snapgrab url https://example.com --selector ".main-content" --dark-mode
-snapgrab url https://example.com --output ./screenshots --json-output
-snapgrab meta https://example.com
-```
-
-### Python
-
+## Features
+Screenshot capture (PNG/JPEG/PDF), viewport presets (desktop/tablet/mobile/custom), Claude Vision auto-resize (1568px max + token estimation), metadata extraction (title/OG/favicon/status), element capture via CSS selector, multi-viewport comparison, dark mode, lazy-load handling.
+## Exports
+`from snapgrab import capture` — async, returns `CaptureResult` with `.path`, `.vision_tokens`, `.metadata`
+## Example
 ```python
 from snapgrab import capture
-
-result = await capture("https://example.com", viewport="desktop", full_page=True)
+result = await capture("https://example.com", viewport="mobile", full_page=True)
 print(result.path, result.vision_tokens, result.metadata.title)
 ```
-
-### MCP
-
-Server: `snapgrab` (command: `snapgrab-mcp`)
-Tools: `capture_screenshot`, `capture_comparison`, `extract_page_metadata`
-
 ## Links
-
-- Docs: https://github.com/QuartzUnit/snapgrab
-- PyPI: https://pypi.org/project/snapgrab/
-- Source: https://github.com/QuartzUnit/snapgrab
+- [Full API](/llms-full.txt) | [GitHub](https://github.com/QuartzUnit/snapgrab) | [PyPI](https://pypi.org/project/snapgrab/)
