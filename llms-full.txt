@@ -1,0 +1,624 @@
+# snapgrab
+
+> URL to screenshot with metadata. Python MCP server included. Claude Vision optimized.
+
+## Purpose
+
+Captures screenshots of web pages using Playwright and extracts page metadata (title, Open Graph tags, favicon). Automatically optimizes output images for Claude Vision by resizing to 1568px max dimension, reducing token cost while preserving visual fidelity. Provides CLI, async Python API, and MCP server interfaces.
+
+## Capabilities
+
+- **Screenshot capture**: Full-page or viewport-only captures via Playwright in PNG, JPEG, or PDF format
+- **Viewport presets**: desktop (1920x1080), tablet (768x1024), mobile (375x812), or custom WxH
+- **Claude Vision optimization**: Auto-resize to 1568px max with LANCZOS resampling; vision token estimation
+- **Metadata extraction**: Title, description, Open Graph tags (og:title, og:description, og:image), favicon URL, HTTP status, content-type
+- **Element capture**: Target specific elements via CSS selector
+- **Comparison mode**: Capture same URL in multiple viewports for responsive design review
+- **Dark mode**: Force dark color scheme for captures
+- **Lazy-load handling**: Automatic scroll-through on full-page captures to trigger lazy-loaded content
+- **MCP server**: Three tools for Claude Code integration via FastMCP (stdio transport)
+- **JSON output**: Structured output for programmatic use (CLI and MCP)
+
+## Installation
+
+```
+pip install snapgrab              # core: Playwright + Pillow + Click + Rich
+pip install snapgrab[mcp]         # + MCP server (FastMCP)
+pip install snapgrab[all]         # everything
+pip install snapgrab[dev]         # + pytest, pytest-asyncio, ruff
+playwright install chromium       # required browser binary
+```
+
+Requires Python >= 3.11. Dependencies: playwright>=1.49, Pillow>=10.0, click>=8.0, rich>=13.0. MCP extra: fastmcp>=2.0.
+
+## Quick Use
+
+### CLI
+
+```bash
+snapgrab url https://example.com
+snapgrab url https://example.com --viewport mobile --full-page --format jpeg
+snapgrab url https://example.com --selector ".main-content" --dark-mode
+snapgrab url https://example.com --output ./screenshots --json-output
+snapgrab meta https://example.com
+```
+
+### Python
+
+```python
+from snapgrab import capture
+
+result = await capture("https://example.com", viewport="desktop", full_page=True)
+print(result.path, result.vision_tokens, result.metadata.title)
+```
+
+### MCP
+
+Server: `snapgrab` (command: `snapgrab-mcp`)
+Tools: `capture_screenshot`, `capture_comparison`, `extract_page_metadata`
+
+## API Reference
+
+### Module: `snapgrab`
+
+Public API exported from `snapgrab.__init__`:
+
+```python
+from snapgrab import capture
+```
+
+`__version__`: `"0.1.0"`
+
+---
+
+### `snapgrab.core.capture`
+
+```python
+async def capture(
+    url: str,
+    *,
+    viewport: str | tuple[int, int] = "desktop",
+    full_page: bool = False,
+    format: str = "png",
+    selector: str | None = None,
+    wait: str | float = "networkidle",
+    dark_mode: bool = False,
+    output_dir: str = "/tmp/snapgrab",
+    quality: int | None = None,
+    optimize_vision: bool = True,
+    headers: dict[str, str] | None = None,
+    _manager: BrowserManager | None = None,
+) -> CaptureResult
+```
+
+Main entry point. Captures a screenshot of a URL and returns structured result.
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `url` | `str` | required | Target URL to capture |
+| `viewport` | `str \| tuple[int, int]` | `"desktop"` | Preset name (`"desktop"`, `"tablet"`, `"mobile"`) or `(width, height)` tuple |
+| `full_page` | `bool` | `False` | Capture entire scrollable page (auto-scrolls to trigger lazy loading) |
+| `format` | `str` | `"png"` | Output format: `"png"`, `"jpeg"`, or `"pdf"` |
+| `selector` | `str \| None` | `None` | CSS selector to capture a specific element. Falls back to full page if not found |
+| `wait` | `str \| float` | `"networkidle"` | Wait condition: `"networkidle"`, `"domcontentloaded"`, `"load"`, or seconds as float |
+| `dark_mode` | `bool` | `False` | Force dark color scheme via `prefers-color-scheme: dark` |
+| `output_dir` | `str` | `"/tmp/snapgrab"` | Directory to save screenshots (created if missing) |
+| `quality` | `int \| None` | `None` | JPEG quality 0-100. Defaults to 80 when format is jpeg. Ignored for PNG/PDF |
+| `optimize_vision` | `bool` | `True` | Resize to fit Claude Vision 1568px max dimension |
+| `headers` | `dict[str, str] \| None` | `None` | Extra HTTP headers to send with the request |
+| `_manager` | `BrowserManager \| None` | `None` | Reuse an existing BrowserManager (for MCP server). When None, creates and closes its own |
+
+**Returns:** `CaptureResult`
+
+**Behavior details:**
+- Generates filenames as `{domain}_{viewport}_{timestamp}.{format}` in output_dir
+- For `full_page=True`, scrolls through the page in viewport-height increments (100ms per step, 500ms settle) before capture
+- If `selector` element is not found, logs a warning and captures full page instead
+- Vision optimization saves a `*_vision.*` file alongside the original
+- Navigation timeout is 30 seconds
+
+---
+
+### `snapgrab.core.CaptureResult`
+
+```python
+@dataclass
+class CaptureResult:
+    path: str = ""
+    format: str = "png"
+    width: int = 0
+    height: int = 0
+    file_size: int = 0
+    metadata: CaptureMetadata = field(default_factory=CaptureMetadata)
+    vision_tokens: int = 0
+    vision_path: str = ""
+    processing_time_ms: float = 0.0
+```
+
+**Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `path` | `str` | Absolute path to the saved screenshot file |
+| `format` | `str` | Image format: `"png"`, `"jpeg"`, or `"pdf"` |
+| `width` | `int` | Viewport width in pixels |
+| `height` | `int` | Viewport height (or scroll height for full_page) in pixels |
+| `file_size` | `int` | File size in bytes |
+| `metadata` | `CaptureMetadata` | Extracted page metadata |
+| `vision_tokens` | `int` | Estimated Claude Vision token cost |
+| `vision_path` | `str` | Path to vision-optimized image (empty if same as original or PDF) |
+| `processing_time_ms` | `float` | Total capture time in milliseconds |
+
+---
+
+### `snapgrab.metadata.CaptureMetadata`
+
+```python
+@dataclass
+class CaptureMetadata:
+    title: str = ""
+    description: str = ""
+    og_title: str = ""
+    og_description: str = ""
+    og_image: str = ""
+    favicon_url: str = ""
+    status_code: int = 0
+    content_type: str = ""
+    url: str = ""
+```
+
+**Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | `str` | `document.title` |
+| `description` | `str` | `<meta name="description">` content |
+| `og_title` | `str` | `<meta property="og:title">` content |
+| `og_description` | `str` | `<meta property="og:description">` content |
+| `og_image` | `str` | `<meta property="og:image">` content |
+| `favicon_url` | `str` | Favicon URL from `<link rel="icon">` or fallback `/favicon.ico` |
+| `status_code` | `int` | HTTP response status code |
+| `content_type` | `str` | HTTP `Content-Type` header value |
+| `url` | `str` | Final URL after redirects |
+
+---
+
+### `snapgrab.metadata.extract_metadata`
+
+```python
+async def extract_metadata(
+    page: Page,
+    response: Response | None = None,
+) -> CaptureMetadata
+```
+
+Extracts metadata from an already-loaded Playwright page.
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | `playwright.async_api.Page` | required | A loaded Playwright page |
+| `response` | `playwright.async_api.Response \| None` | `None` | HTTP response from `page.goto()` (provides status code, content-type, final URL) |
+
+**Returns:** `CaptureMetadata`
+
+---
+
+### `snapgrab.vision.estimate_vision_tokens`
+
+```python
+def estimate_vision_tokens(width: int, height: int) -> int
+```
+
+Estimate Claude Vision token cost for an image at given dimensions.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `width` | `int` | Image width in pixels |
+| `height` | `int` | Image height in pixels |
+
+**Returns:** `int` — Estimated token count.
+
+**Formula:** Images exceeding 1568px on either dimension are downscaled proportionally. Token cost = `(effective_width * effective_height) / 750`.
+
+---
+
+### `snapgrab.vision.optimize_for_vision`
+
+```python
+def optimize_for_vision(
+    image_path: str,
+    output_path: str | None = None,
+) -> str
+```
+
+Resize an image to fit within Claude Vision's 1568px max dimension limit using LANCZOS resampling.
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `image_path` | `str` | required | Path to the source image |
+| `output_path` | `str \| None` | `None` | Path to save the optimized image. When None, saves as `{stem}_vision.{ext}` alongside original |
+
+**Returns:** `str` — Path to the optimized image. Returns the original path unchanged if image already fits within limits.
+
+**Constant:** `MAX_VISION_DIM = 1568`
+
+---
+
+### `snapgrab.browser.BrowserManager`
+
+```python
+class BrowserManager:
+    def __init__(self) -> None: ...
+    async def new_page(
+        self,
+        viewport: str | tuple[int, int] = "desktop",
+        dark_mode: bool = False,
+        extra_headers: dict[str, str] | None = None,
+    ) -> Page: ...
+    async def close(self) -> None: ...
+```
+
+Manages Playwright Chromium browser lifecycle. Supports reuse across multiple captures (MCP server mode) or single-shot usage (CLI/API mode). Launches headless Chromium on first use.
+
+**`new_page` parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `viewport` | `str \| tuple[int, int]` | `"desktop"` | Viewport preset or `(width, height)` |
+| `dark_mode` | `bool` | `False` | Set `prefers-color-scheme: dark` |
+| `extra_headers` | `dict[str, str] \| None` | `None` | Extra HTTP headers for the browser context |
+
+**Returns:** `playwright.async_api.Page` — A new page in a fresh browser context.
+
+**Viewport presets:**
+
+| Preset | Width | Height |
+|--------|-------|--------|
+| `"desktop"` | 1920 | 1080 |
+| `"tablet"` | 768 | 1024 |
+| `"mobile"` | 375 | 812 |
+
+---
+
+### Module-level browser helpers
+
+```python
+async def get_manager() -> BrowserManager    # get/create singleton
+async def close_manager() -> None            # close and clear singleton
+```
+
+Used internally by `capture()` when no `_manager` is provided.
+
+---
+
+### MCP Tools
+
+Server name: `snapgrab`. Transport: stdio. Command: `snapgrab-mcp`.
+
+#### `capture_screenshot`
+
+```python
+@mcp.tool()
+async def capture_screenshot(
+    url: str,
+    viewport: str = "desktop",
+    full_page: bool = False,
+    format: str = "png",
+    selector: str | None = None,
+    wait: str = "networkidle",
+    dark_mode: bool = False,
+    optimize_vision: bool = True,
+) -> str  # JSON string
+```
+
+Captures a screenshot and returns JSON with path, dimensions, file size, vision tokens, processing time, and metadata.
+
+**Return JSON schema:**
+```json
+{
+  "path": "string (vision-optimized path if available)",
+  "original_path": "string",
+  "format": "string",
+  "width": "int",
+  "height": "int",
+  "file_size": "int",
+  "vision_tokens": "int",
+  "processing_time_ms": "float",
+  "metadata": {
+    "title": "string",
+    "description": "string",
+    "og_title": "string",
+    "og_image": "string",
+    "favicon_url": "string",
+    "status_code": "int",
+    "url": "string"
+  }
+}
+```
+
+#### `capture_comparison`
+
+```python
+@mcp.tool()
+async def capture_comparison(
+    url: str,
+    viewports: list[str] | None = None,
+    full_page: bool = False,
+) -> str  # JSON string
+```
+
+Captures the same URL in multiple viewports. Default viewports: `["desktop", "mobile"]`.
+
+**Return JSON schema:**
+```json
+{
+  "url": "string",
+  "captures": [
+    {
+      "viewport": "string",
+      "path": "string",
+      "width": "int",
+      "height": "int",
+      "vision_tokens": "int"
+    }
+  ],
+  "total_vision_tokens": "int"
+}
+```
+
+#### `extract_page_metadata`
+
+```python
+@mcp.tool()
+async def extract_page_metadata(url: str) -> str  # JSON string
+```
+
+Extracts metadata without taking a screenshot. Faster when only metadata is needed.
+
+**Return JSON schema:**
+```json
+{
+  "title": "string",
+  "description": "string",
+  "og_title": "string",
+  "og_description": "string",
+  "og_image": "string",
+  "favicon_url": "string",
+  "status_code": "int",
+  "content_type": "string",
+  "url": "string"
+}
+```
+
+---
+
+### CLI Reference
+
+Entry point: `snapgrab` (or `python -m snapgrab`)
+
+#### `snapgrab url <URL>`
+
+Capture a screenshot.
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--viewport` | `-v` | `str` | `desktop` | `desktop`, `tablet`, `mobile`, or `WxH` (e.g. `1440x900`) |
+| `--full-page` | `-f` | flag | off | Capture entire scrollable page |
+| `--format` | | choice | `png` | `png`, `jpeg`, or `pdf` |
+| `--selector` | `-s` | `str` | none | CSS selector to capture |
+| `--wait` | `-w` | `str` | `networkidle` | `networkidle`, `domcontentloaded`, `load`, or seconds |
+| `--dark-mode` | `-d` | flag | off | Force dark color scheme |
+| `--output` | `-o` | `str` | `/tmp/snapgrab` | Output directory |
+| `--quality` | `-q` | `int` | none | JPEG quality 0-100 |
+| `--no-optimize` | | flag | off | Skip Claude Vision optimization |
+| `--json-output` | `-j` | flag | off | Output as JSON |
+
+#### `snapgrab meta <URL>`
+
+Extract metadata only (no screenshot). Options: `--json-output` / `-j`.
+
+#### `snapgrab --version`
+
+Print version and exit.
+
+## Examples
+
+### Basic screenshot capture
+
+```python
+import asyncio
+from snapgrab import capture
+
+async def main():
+    result = await capture("https://example.com")
+    print(f"Saved: {result.path}")
+    print(f"Size: {result.width}x{result.height}")
+    print(f"Vision tokens: {result.vision_tokens}")
+
+asyncio.run(main())
+```
+
+### Mobile viewport with dark mode
+
+```python
+result = await capture(
+    "https://example.com",
+    viewport="mobile",
+    dark_mode=True,
+    full_page=True,
+    format="jpeg",
+    quality=90,
+)
+print(f"JPEG: {result.path} ({result.file_size:,} bytes)")
+```
+
+### Custom viewport dimensions
+
+```python
+result = await capture(
+    "https://example.com",
+    viewport=(1440, 900),
+)
+```
+
+### Element-targeted capture
+
+```python
+result = await capture(
+    "https://example.com",
+    selector="article.main-content",
+)
+```
+
+### Skip vision optimization
+
+```python
+result = await capture(
+    "https://example.com",
+    optimize_vision=False,
+)
+# result.vision_path will be ""
+# result.vision_tokens still estimated from original dimensions
+```
+
+### Custom wait and headers
+
+```python
+result = await capture(
+    "https://example.com/spa",
+    wait=3.0,  # wait 3 seconds after page load
+    headers={"Authorization": "Bearer token123"},
+)
+```
+
+### Metadata-only extraction
+
+```python
+from snapgrab.browser import BrowserManager
+from snapgrab.metadata import extract_metadata
+
+async def get_meta(url: str):
+    mgr = BrowserManager()
+    page = await mgr.new_page()
+    try:
+        response = await page.goto(url, wait_until="networkidle", timeout=30000)
+        meta = await extract_metadata(page, response)
+        print(f"Title: {meta.title}")
+        print(f"OG Image: {meta.og_image}")
+        print(f"Status: {meta.status_code}")
+    finally:
+        await page.context.close()
+        await mgr.close()
+```
+
+### Vision token estimation
+
+```python
+from snapgrab.vision import estimate_vision_tokens, optimize_for_vision
+
+# Estimate tokens for an image dimension
+tokens = estimate_vision_tokens(1920, 1080)
+print(f"Desktop screenshot: ~{tokens} tokens")  # ~2,189 tokens
+
+tokens = estimate_vision_tokens(375, 812)
+print(f"Mobile screenshot: ~{tokens} tokens")    # ~406 tokens
+
+# Optimize an existing image
+optimized_path = optimize_for_vision("/path/to/large_screenshot.png")
+```
+
+### Responsive comparison via CLI
+
+```bash
+# Compare desktop vs mobile in one command (MCP tool)
+# CLI captures one viewport at a time:
+snapgrab url https://example.com --viewport desktop --json-output > desktop.json
+snapgrab url https://example.com --viewport mobile --json-output > mobile.json
+snapgrab url https://example.com --viewport tablet --json-output > tablet.json
+```
+
+### Batch capture with BrowserManager reuse
+
+```python
+from snapgrab.browser import BrowserManager
+from snapgrab.core import capture
+
+async def batch_capture(urls: list[str]):
+    mgr = BrowserManager()
+    try:
+        results = []
+        for url in urls:
+            result = await capture(url, _manager=mgr)
+            results.append(result)
+        return results
+    finally:
+        await mgr.close()
+```
+
+### MCP server configuration (Claude Code)
+
+```json
+{
+  "mcpServers": {
+    "snapgrab": {
+      "command": "snapgrab-mcp"
+    }
+  }
+}
+```
+
+Or with uvx (no install needed):
+
+```json
+{
+  "mcpServers": {
+    "snapgrab": {
+      "command": "uvx",
+      "args": ["snapgrab[mcp]", "snapgrab-mcp"]
+    }
+  }
+}
+```
+
+## Configuration
+
+### Output directory
+
+Default: `/tmp/snapgrab`. Override via CLI `--output` or Python `output_dir` parameter. The directory is created automatically if it does not exist.
+
+### Filename pattern
+
+Auto-generated: `{domain}_{viewport}_{YYYYMMDD_HHMMSS}.{format}`
+
+Example: `example_com_desktop_20260402_143000.png`
+
+### Vision optimization
+
+Enabled by default. Saves a `*_vision.*` variant alongside the original. The vision-optimized file is resized to fit within 1568x1568px using LANCZOS resampling while maintaining aspect ratio. Disable via `--no-optimize` (CLI) or `optimize_vision=False` (Python).
+
+### JPEG quality
+
+Default: 80 (when format is jpeg). Override via `--quality` (CLI) or `quality` parameter (Python). Range: 0-100. Ignored for PNG and PDF formats.
+
+### Navigation timeout
+
+Fixed at 30 seconds for all page navigations. Not currently configurable.
+
+### Browser
+
+Headless Chromium via Playwright. Requires `playwright install chromium` after pip install. The browser is launched on first capture and reused in MCP server mode.
+
+## Links
+
+- Docs: https://github.com/QuartzUnit/snapgrab
+- PyPI: https://pypi.org/project/snapgrab/
+- Source: https://github.com/QuartzUnit/snapgrab
+- Issues: https://github.com/QuartzUnit/snapgrab/issues
