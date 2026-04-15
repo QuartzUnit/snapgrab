@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/github/license/QuartzUnit/snapgrab)](https://github.com/QuartzUnit/snapgrab/blob/main/LICENSE)
 [![Tests](https://img.shields.io/badge/tests-29%20passed-brightgreen)]()
 
-> [한국어 문서](README.ko.md)
+> [한국어 문서](README.ko.md) · [llms.txt](llms.txt)
 
 > URL to screenshot with metadata. Claude Vision optimized.
 
