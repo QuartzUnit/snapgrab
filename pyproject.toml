@@ -40,6 +40,8 @@ snapgrab-mcp = "snapgrab.mcp_server:main"
 Homepage = "https://github.com/QuartzUnit/snapgrab"
 Repository = "https://github.com/QuartzUnit/snapgrab"
 Issues = "https://github.com/QuartzUnit/snapgrab/issues"
+Documentation = "https://github.com/QuartzUnit/snapgrab#readme"
+Changelog = "https://github.com/QuartzUnit/snapgrab/releases"
 
 [tool.ruff]
 target-version = "py311"

@@ -128,3 +128,8 @@ result.metadata.url    # final URL after redirects
 [MIT](LICENSE)
 
 <!-- mcp-name: io.github.QuartzUnit/snapgrab -->
+
+
+---
+
+<sub>Part of the [QuartzUnit](https://github.com/QuartzUnit) ecosystem — composable Python libraries for data collection, extraction, search, and AI agent safety.</sub>
